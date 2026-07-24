@@ -1,0 +1,60 @@
+; Blink Labs decentralized DNS attestation protocol v1.
+;
+; The outer CIP-0137 KES/opcert envelope authenticates the SPO that submitted
+; this body. The array order is consensus-critical. New fields require a new
+; protocol version.
+
+checkpoint-vote = [
+  protocol-version: 1,
+  message-kind: 1,                  ; CHECKPOINT_VOTE
+  cardano-network-magic: uint32,
+  signer-policy-id: bstr .size 28,
+  handshake-network: 0..3,          ; mainnet, regtest, testnet, simnet
+  round: uint,
+  state-through-height: uint,
+  root-commit-height: uint,
+  root-commit-block-hash: digest32,
+  root-commit-chainwork: digest32,   ; unsigned, big-endian
+  handshake-name-root: digest32,
+  dns-binding-root: digest32,
+  previous-checkpoint-digest: digest32,
+  finality-policy-digest: digest32,
+  evidence-bundle-digest: digest32,
+  cardano-stake-epoch: uint,
+  stake-snapshot-digest: digest32,
+  implementation-id: text .size (1..64),
+  implementation-version: text .size (1..64),
+  observed-at-unix: uint,
+  evidence-uri: text .size (1..256)
+]
+
+digest32 = bstr .size 32
+
+; AgreementDigest is:
+;
+; blake2b-256(
+;   "BLINK_DNS_HNS_CHECKPOINT_V1\x00" ||
+;   canonical-cbor(checkpoint-agreement)
+; )
+;
+; Diagnostic implementation, observation-time, and URI fields are excluded.
+
+checkpoint-agreement = [
+  protocol-version: 1,
+  message-kind: 1,
+  cardano-network-magic: uint32,
+  signer-policy-id: bstr .size 28,
+  handshake-network: 0..3,
+  round: uint,
+  state-through-height: uint,
+  root-commit-height: uint,
+  root-commit-block-hash: digest32,
+  root-commit-chainwork: digest32,
+  handshake-name-root: digest32,
+  dns-binding-root: digest32,
+  previous-checkpoint-digest: digest32,
+  finality-policy-digest: digest32,
+  evidence-bundle-digest: digest32,
+  cardano-stake-epoch: uint,
+  stake-snapshot-digest: digest32
+]
