@@ -1,0 +1,19 @@
+; CDNS1 Handshake-to-Cardano owner binding.
+;
+; A Handshake TXT item is the five ASCII bytes "CDNS1" followed immediately
+; by the canonical CBOR encoding of dns-binding-v1. The complete TXT item must
+; not exceed 255 bytes. Integers use their shortest CBOR representation,
+; definite lengths are required, and tags are forbidden.
+
+dns-binding-v1 = [
+  version: 1,
+  handshake-network: 0 / 1, ; mainnet / regtest
+  name-hash: bytes .size 32, ; SHA3-256(canonical Handshake TLD)
+  cardano-network-magic: uint .le 4294967295,
+  cardano-network-id: uint .le 15,
+  protocol-policy-id: bytes .size 28,
+  controller-kind: 0 / 1, ; key / script credential
+  controller-credential: bytes .size 28,
+  generation-nonce: bytes .size 32,
+  flags: 0
+]
