@@ -28,6 +28,14 @@ The version 1 owner binding defines:
 - generation nonces and strict capability-bit validation;
 - duplicate-binding and cross-name transplant rejection.
 
+Certified binding leaves add:
+
+- owner outpoint and resource identity;
+- registration, expiry, and revocation state;
+- transfer and renewal heights;
+- the committed Handshake block identity;
+- a domain-separated leaf digest.
+
 The outer CIP-0137 KES/opcert envelope is the individual SPO vote. This package
 does not implement DMQ transport, KES authentication, quorum, or certificate
 aggregation.
@@ -40,6 +48,8 @@ checkpoint_test.go         behavior and negative tests
 spec/v1/attestation.cddl   language-neutral CDDL
 binding.go                 CDNS1 binding and Handshake name canonicalization
 binding_test.go            binding behavior, negative tests, and fuzz coverage
+binding_leaf.go            certified binding leaf codec and digest
+binding_leaf_test.go       lifecycle, digest, vector, and fuzz coverage
 spec/v1/binding.cddl       language-neutral CDNS1 binding schema
 testdata/v1/               golden vector inputs and expected outputs
 ```
