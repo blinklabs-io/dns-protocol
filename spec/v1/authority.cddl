@@ -1,0 +1,83 @@
+; Blink Labs typed name authority and Cardano representation schemas v1.
+;
+; Array order is identity-critical. New fields require a new version.
+;
+; Name semantics:
+; - canonical-wire-name is uncompressed, lower-case LDH wire form with root.
+; - Text producers first apply Unicode UTS #46 non-transitional processing
+;   with Bidi, Joiner, hyphen, and DNS-length checks, then lower-case the
+;   resulting A-labels and encode absolute DNS wire form. This schema consumes
+;   only that already-normalized wire form.
+; - TLD has one label and a zero parent digest.
+; - SLD has two labels and its parent digest MUST equal the NameAuthority
+;   digest of the suffix under the same authority kind and network.
+; - ICANN authority-network-id is:
+;   blake2b-256("BLINK_DNS/ICANN_IANA_ROOT/V1\x00").
+; - Handshake authority-network-id is the 32-byte consensus genesis block
+;   hash in internal protocol byte order, not reversed display-hex order.
+; - Cardano genesis file hashes are blake2b-256 of the exact Byron and Shelley
+;   genesis JSON file bytes distributed in the deployment manifest.
+
+name-authority = [
+  version: 1,
+  authority-kind: 1..2,            ; HANDSHAKE, ICANN_DNS
+  name-class: 1..2,                ; TLD, SLD
+  authority-network-id: digest32,
+  canonical-wire-name: bstr .size (2..255),
+  parent-authority-digest: digest32
+]
+
+cip113-representation = [
+  version: 1,
+  name-authority-digest: digest32,
+  cardano-address-network-id: 0..15,
+  cardano-network-magic: uint32,
+  cardano-byron-genesis-file-hash: digest32,
+  cardano-shelley-genesis-file-hash: digest32,
+  protocol-config-policy-id: policy-id,
+  protocol-config-asset-name: asset-name,
+  registry-policy-id: policy-id,
+  registry-node-logic-digest: digest32,
+  token-policy-id: policy-id,
+  asset-name: asset-name,
+  domain-state-policy-id: policy-id,
+  domain-state-asset-name: asset-name,
+  domain-state-validator: script-credential,
+  profile-digest: digest32
+]
+
+cip113-registry-node-logic = [
+  version: 1,
+  token-policy-id: policy-id,       ; RegistryNode key
+  minting-logic: script-credential,
+  transfer-logic: script-credential,
+  third-party-logic: script-credential,
+  global-state-policy-id: policy-id
+]
+
+; The registry-node logic digest excludes RegistryNode.next because linked-list
+; insertion changes next without changing the token policy's security logic.
+
+policy-id = bstr .size 28
+digest32 = bstr .size 32
+asset-name = bstr .size (1..32)
+script-credential = [
+  credential-kind: 2,
+  credential-hash: bstr .size 28
+]
+
+; Identities are:
+;
+; blake2b-256(
+;   "BLINK_DNS/NAME_AUTHORITY/V1\x00" || canonical-cbor(name-authority)
+; )
+;
+; blake2b-256(
+;   "BLINK_DNS/CIP113_REPRESENTATION/V1\x00" ||
+;   canonical-cbor(cip113-representation)
+; )
+;
+; blake2b-256(
+;   "BLINK_DNS/CIP113_REGISTRY_LOGIC/V1\x00" ||
+;   canonical-cbor(cip113-registry-node-logic)
+; )
