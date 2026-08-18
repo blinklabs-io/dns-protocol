@@ -46,18 +46,9 @@ func TestNameAuthorityRoundTripAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("digest authority: %v", err)
 	}
-	assertHex(
-		t,
-		"authority CBOR",
-		encoded,
-		"8601020158201268e59af84aa6b28f3a91cab4b6f73fd746ae2f3f271d6de27ee4c0d117ab3245036164610058200000000000000000000000000000000000000000000000000000000000000000",
-	)
-	assertHex(
-		t,
-		"authority digest",
-		digest[:],
-		"10049c863b3970f1d2f5014b269e4d35d792636f1abae9288188d06f357608b9",
-	)
+	fixture := loadAuthorityFixture(t)
+	assertHex(t, "authority CBOR", encoded, fixture.NameAuthority.ExpectedCBOR)
+	assertHex(t, "authority digest", digest[:], fixture.NameAuthority.ExpectedDigest)
 }
 
 func TestNameAuthoritySeparatesRoots(t *testing.T) {
@@ -267,18 +258,9 @@ func TestCIP113RepresentationRoundTripAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("digest representation: %v", err)
 	}
-	assertHex(
-		t,
-		"representation CBOR",
-		encoded,
-		"900158200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20011a2d964a09582002030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20215820030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122581c101112131415161718191a1b1c1d1e1f202122232425262728292a2b4d646e732d636f6e6669672d7631581c303132333435363738393a3b3c3d3e3f404142434445464748494a4b5820660f277456958e9f2b9c10e1ff294b0866994633c665a18bd4114e52cd1985a0581c505152535455565758595a5b5c5d5e5f606162636465666768696a6b5820707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f581c606162636465666768696a6b6c6d6e6f707172737475767778797a7b5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f8202581ca0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babb5820909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
-	)
-	assertHex(
-		t,
-		"representation digest",
-		digest[:],
-		"0274f01d12c2ce7ef5f0aa68beab8cef55f3accbdff896e287da6123d03eef76",
-	)
+	fixture := loadAuthorityFixture(t)
+	assertHex(t, "representation CBOR", encoded, fixture.Representation.ExpectedCBOR)
+	assertHex(t, "representation digest", digest[:], fixture.Representation.ExpectedDigest)
 }
 
 func TestCIP113RepresentationValidation(t *testing.T) {
@@ -430,18 +412,9 @@ func TestCIP113RegistryNodeLogicRoundTripAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("digest registry node logic: %v", err)
 	}
-	assertHex(
-		t,
-		"registry node logic CBOR",
-		encoded,
-		"8601581c505152535455565758595a5b5c5d5e5f606162636465666768696a6b8202581c303132333435363738393a3b3c3d3e3f404142434445464748494a4b8202581c505152535455565758595a5b5c5d5e5f606162636465666768696a6b8202581c707172737475767778797a7b7c7d7e7f808182838485868788898a8b581c606162636465666768696a6b6c6d6e6f707172737475767778797a7b",
-	)
-	assertHex(
-		t,
-		"registry node logic digest",
-		digest[:],
-		"660f277456958e9f2b9c10e1ff294b0866994633c665a18bd4114e52cd1985a0",
-	)
+	fixture := loadAuthorityFixture(t)
+	assertHex(t, "registry node logic CBOR", encoded, fixture.RegistryNodeLogic.ExpectedCBOR)
+	assertHex(t, "registry node logic digest", digest[:], fixture.RegistryNodeLogic.ExpectedDigest)
 }
 
 func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
@@ -547,28 +520,45 @@ func TestRejectNonCanonicalAuthorityCBOR(t *testing.T) {
 	}
 }
 
-func TestAuthorityGoldenVectorFile(t *testing.T) {
-	t.Parallel()
+// authorityVector is one golden entry from testdata/v1/authority.json.
+type authorityVector struct {
+	ExpectedCBOR   string `json:"expected_cbor_hex"`
+	ExpectedDigest string `json:"expected_digest_hex"`
+}
+
+// authorityFixture mirrors testdata/v1/authority.json.
+type authorityFixture struct {
+	ICANNRootNetworkID    string          `json:"icann_root_network_id_hex"`
+	NameAuthority         authorityVector `json:"name_authority"`
+	ICANNSLDAuthority     authorityVector `json:"icann_sld_authority"`
+	HandshakeTLDAuthority authorityVector `json:"handshake_tld_authority"`
+	HandshakeSLDAuthority authorityVector `json:"handshake_sld_authority"`
+	Representation        authorityVector `json:"cip113_representation"`
+	RegistryNodeLogic     authorityVector `json:"cip113_registry_node_logic"`
+}
+
+// loadAuthorityFixture is the single source of truth for the authority golden
+// vectors. The round-trip tests below assert against it rather than repeating
+// the same hex inline: this repository requires new vectors whenever an
+// encoding changes, and two independent copies means an encoding change can be
+// applied to one and silently leave the other inconsistent. The binding,
+// binding-leaf, and checkpoint tests already take fixture-only vectors.
+func loadAuthorityFixture(t *testing.T) authorityFixture {
+	t.Helper()
 	data, err := os.ReadFile("testdata/v1/authority.json")
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
-	type vector struct {
-		ExpectedCBOR   string `json:"expected_cbor_hex"`
-		ExpectedDigest string `json:"expected_digest_hex"`
-	}
-	var fixture struct {
-		ICANNRootNetworkID    string `json:"icann_root_network_id_hex"`
-		NameAuthority         vector `json:"name_authority"`
-		ICANNSLDAuthority     vector `json:"icann_sld_authority"`
-		HandshakeTLDAuthority vector `json:"handshake_tld_authority"`
-		HandshakeSLDAuthority vector `json:"handshake_sld_authority"`
-		Representation        vector `json:"cip113_representation"`
-		RegistryNodeLogic     vector `json:"cip113_registry_node_logic"`
-	}
+	var fixture authorityFixture
 	if err := json.Unmarshal(data, &fixture); err != nil {
 		t.Fatalf("decode fixture: %v", err)
 	}
+	return fixture
+}
+
+func TestAuthorityGoldenVectorFile(t *testing.T) {
+	t.Parallel()
+	fixture := loadAuthorityFixture(t)
 	icannRootID := ICANNRootNetworkIDV1()
 	if got := hex.EncodeToString(icannRootID[:]); got !=
 		fixture.ICANNRootNetworkID {
@@ -582,7 +572,7 @@ func TestAuthorityGoldenVectorFile(t *testing.T) {
 		name    string
 		marshal func() ([]byte, error)
 		digest  func() (Digest, error)
-		vector  vector
+		vector  authorityVector
 	}{
 		{
 			name:    "name authority",
