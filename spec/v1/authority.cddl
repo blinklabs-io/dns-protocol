@@ -3,7 +3,10 @@
 ; Array order is identity-critical. New fields require a new version.
 ;
 ; Name semantics:
-; - canonical-wire-name is uncompressed, lower-case LDH wire form with root.
+; - canonical-wire-name is uncompressed, lower-case wire form with root. Labels
+;   are LDH except that Handshake permits an interior underscore in its final
+;   TLD label; underscores remain forbidden at label edges and in SLD child
+;   labels.
 ; - Text producers first apply Unicode UTS #46 non-transitional processing
 ;   with Bidi, Joiner, hyphen, and DNS-length checks, then lower-case the
 ;   resulting A-labels and encode absolute DNS wire form. This schema consumes

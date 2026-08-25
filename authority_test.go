@@ -221,6 +221,99 @@ func TestNameAuthoritySLDParentBinding(t *testing.T) {
 	}
 }
 
+func TestNameAuthorityHandshakeUnderscoreRules(t *testing.T) {
+	t.Parallel()
+
+	parent := testHandshakeTLDAuthority()
+	parent.CanonicalWireName = []byte{3, 'a', '_', 'b', 0}
+	if err := parent.Validate(); err != nil {
+		t.Fatalf("validate Handshake TLD with interior underscore: %v", err)
+	}
+	parentDigest, err := parent.Digest()
+	if err != nil {
+		t.Fatalf("digest Handshake TLD with interior underscore: %v", err)
+	}
+	child := NameAuthority{
+		Version:      NameAuthorityVersionV1,
+		Kind:         AuthorityKindHandshake,
+		Class:        NameClassSLD,
+		NetworkID:    parent.NetworkID,
+		ParentDigest: parentDigest,
+		CanonicalWireName: []byte{
+			3, 'w', 'w', 'w',
+			3, 'a', '_', 'b',
+			0,
+		},
+	}
+	if err := child.Validate(); err != nil {
+		t.Fatalf("validate Handshake SLD under underscored TLD: %v", err)
+	}
+
+	normalParent := testHandshakeTLDAuthority()
+	normalParentDigest, err := normalParent.Digest()
+	if err != nil {
+		t.Fatalf("digest ordinary Handshake parent: %v", err)
+	}
+	tests := []struct {
+		name      string
+		authority NameAuthority
+	}{
+		{
+			name: "leading underscore",
+			authority: NameAuthority{
+				Version:           NameAuthorityVersionV1,
+				Kind:              AuthorityKindHandshake,
+				Class:             NameClassTLD,
+				NetworkID:         parent.NetworkID,
+				CanonicalWireName: []byte{3, '_', 'a', 'b', 0},
+			},
+		},
+		{
+			name: "trailing underscore",
+			authority: NameAuthority{
+				Version:           NameAuthorityVersionV1,
+				Kind:              AuthorityKindHandshake,
+				Class:             NameClassTLD,
+				NetworkID:         parent.NetworkID,
+				CanonicalWireName: []byte{3, 'a', 'b', '_', 0},
+			},
+		},
+		{
+			name: "ICANN label",
+			authority: NameAuthority{
+				Version:           NameAuthorityVersionV1,
+				Kind:              AuthorityKindICANNDNS,
+				Class:             NameClassTLD,
+				NetworkID:         ICANNRootNetworkIDV1(),
+				CanonicalWireName: []byte{3, 'a', '_', 'b', 0},
+			},
+		},
+		{
+			name: "Handshake SLD child label",
+			authority: NameAuthority{
+				Version:      NameAuthorityVersionV1,
+				Kind:         AuthorityKindHandshake,
+				Class:        NameClassSLD,
+				NetworkID:    normalParent.NetworkID,
+				ParentDigest: normalParentDigest,
+				CanonicalWireName: []byte{
+					3, 'a', '_', 'b',
+					3, 'a', 'd', 'a',
+					0,
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if err := test.authority.Validate(); err == nil {
+				t.Fatal("expected validation error")
+			}
+		})
+	}
+}
+
 func TestCIP113RepresentationRoundTripAndDigest(t *testing.T) {
 	t.Parallel()
 	value := testCIP113Representation()

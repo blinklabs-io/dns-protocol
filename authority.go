@@ -63,10 +63,11 @@ const (
 )
 
 // NameAuthority identifies one canonical DNS name in one external namespace.
-// CanonicalWireName is an uncompressed, lower-case LDH DNS wire name with a
-// terminal root label. Text-to-wire IDNA conversion is a separate protocol
-// operation. For Handshake, NetworkID is the consensus genesis block hash in
-// internal protocol byte order.
+// CanonicalWireName is an uncompressed, lower-case DNS wire name with a
+// terminal root label. Labels are LDH, except that Handshake permits an
+// interior underscore in the final TLD label. Text-to-wire IDNA conversion is
+// a separate protocol operation. For Handshake, NetworkID is the consensus
+// genesis block hash in internal protocol byte order.
 type NameAuthority struct {
 	Version           uint64
 	Kind              AuthorityKind
@@ -185,7 +186,7 @@ func (a NameAuthority) Validate() error {
 	if a.Kind == AuthorityKindICANNDNS && a.NetworkID != ICANNRootNetworkIDV1() {
 		return errors.New("ICANN authority network ID is not the IANA root ID")
 	}
-	labelCount, err := canonicalWireNameLabelCount(a.CanonicalWireName)
+	labelCount, err := canonicalWireNameLabelCount(a.CanonicalWireName, a.Kind)
 	if err != nil {
 		return fmt.Errorf("canonical wire name: %w", err)
 	}
@@ -220,7 +221,7 @@ func (a NameAuthority) Validate() error {
 }
 
 func (a NameAuthority) expectedParentDigest() (Digest, error) {
-	parentName, err := parentWireName(a.CanonicalWireName)
+	parentName, err := parentWireName(a.CanonicalWireName, a.Kind)
 	if err != nil {
 		return Digest{}, fmt.Errorf("derive SLD parent: %w", err)
 	}
@@ -708,7 +709,10 @@ func cip113RegistryNodeLogicFromWire(
 	return node, nil
 }
 
-func canonicalWireNameLabelCount(name []byte) (int, error) {
+func canonicalWireNameLabelCount(
+	name []byte,
+	kind AuthorityKind,
+) (int, error) {
 	if len(name) < 2 {
 		return 0, errors.New("must contain a label and terminal root")
 	}
@@ -741,11 +745,17 @@ func canonicalWireNameLabelCount(name []byte) (int, error) {
 		if label[0] == '-' || label[len(label)-1] == '-' {
 			return 0, errors.New("label begins or ends with a hyphen")
 		}
+		if label[0] == '_' || label[len(label)-1] == '_' {
+			return 0, errors.New("label begins or ends with an underscore")
+		}
+		handshakeTLD := kind == AuthorityKindHandshake &&
+			offset+length == len(name)-1 && name[len(name)-1] == 0
 		for _, b := range label {
 			switch {
 			case b >= 'a' && b <= 'z':
 			case b >= '0' && b <= '9':
 			case b == '-':
+			case b == '_' && handshakeTLD:
 			case b >= 'A' && b <= 'Z':
 				return 0, errors.New("contains upper-case ASCII")
 			case b > 0x7f:
@@ -758,8 +768,8 @@ func canonicalWireNameLabelCount(name []byte) (int, error) {
 	}
 }
 
-func parentWireName(name []byte) ([]byte, error) {
-	labelCount, err := canonicalWireNameLabelCount(name)
+func parentWireName(name []byte, kind AuthorityKind) ([]byte, error) {
+	labelCount, err := canonicalWireNameLabelCount(name, kind)
 	if err != nil {
 		return nil, err
 	}
