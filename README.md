@@ -22,7 +22,7 @@ Cardano stake pool operators:
 
 The version 1 owner binding defines:
 
-- canonical Handshake TLD normalization and name hashing;
+- canonical Handshake TLD normalization, consensus validation, and name hashing;
 - the compact `CDNS1` Handshake TXT item;
 - Cardano network, policy, and controller credential binding;
 - generation nonces and strict capability-bit validation;
