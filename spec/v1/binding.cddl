@@ -4,6 +4,11 @@
 ; by the canonical CBOR encoding of dns-binding-v1. The complete TXT item must
 ; not exceed 255 bytes. Integers use their shortest CBOR representation,
 ; definite lengths are required, and tags are forbidden.
+;
+; A canonical Handshake TLD is one lowercase ASCII label of at most 63 bytes.
+; It may contain letters, digits, hyphens, and underscores; hyphens and
+; underscores cannot be the first or last byte. The Handshake consensus
+; blacklist rejects "example", "invalid", "local", "localhost", and "test".
 
 dns-binding-v1 = [
   version: 1,
