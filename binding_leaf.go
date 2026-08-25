@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 
 	"golang.org/x/crypto/blake2b"
 )
@@ -25,6 +26,10 @@ import (
 const (
 	// BindingLeafVersionV1 is the first certified binding leaf version.
 	BindingLeafVersionV1 uint64 = 1
+
+	// NullOwnerOutputIndex is the Handshake null-owner outpoint index used by
+	// expired name states together with an all-zero transaction ID.
+	NullOwnerOutputIndex uint32 = math.MaxUint32
 )
 
 const bindingLeafDomainV1 = "BLINK_DNS_BINDING_LEAF_V1\x00"
@@ -77,8 +82,15 @@ func (l BindingLeaf) Validate() error {
 	if err := l.Binding.Validate(); err != nil {
 		return fmt.Errorf("binding: %w", err)
 	}
-	if isZero(l.OwnerTransactionID[:]) {
-		return errors.New("owner transaction ID must not be zero")
+	ownerTransactionIDIsZero := isZero(l.OwnerTransactionID[:])
+	if ownerTransactionIDIsZero {
+		if !l.Expired || l.OwnerOutputIndex != NullOwnerOutputIndex {
+			return errors.New(
+				"null owner outpoint is only valid for an expired name",
+			)
+		}
+	} else if l.OwnerOutputIndex == NullOwnerOutputIndex {
+		return errors.New("owner output index is reserved for the null owner")
 	}
 	if isZero(l.ResourceHash[:]) {
 		return errors.New("resource hash must not be zero")

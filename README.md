@@ -30,7 +30,7 @@ The version 1 owner binding defines:
 
 Certified binding leaves add:
 
-- owner outpoint and resource identity;
+- owner outpoint (including the expired-name null sentinel) and resource identity;
 - registration, expiry, and revocation state;
 - transfer and renewal heights;
 - the committed Handshake block identity;

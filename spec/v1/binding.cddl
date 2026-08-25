@@ -25,6 +25,8 @@ dns-binding-v1 = [
 
 ; Consensus-derived binding leaf. The leaf digest is:
 ; Blake2b-256("BLINK_DNS_BINDING_LEAF_V1\x00" || canonical_cbor(binding-leaf-v1)).
+; An expired name may use the Handshake null owner: 32 zero transaction-ID
+; bytes with owner-output-index 4294967295. That index is otherwise reserved.
 
 binding-leaf-v1 = [
   version: 1,
