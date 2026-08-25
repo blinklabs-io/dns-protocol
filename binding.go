@@ -112,14 +112,15 @@ func CanonicalHandshakeTLD(name string) (string, error) {
 		return "", fmt.Errorf("Handshake TLD is %d bytes, exceeds 63", len(name))
 	}
 
-	canonical := strings.ToLower(name)
-	for i := range len(canonical) {
-		ch := canonical[i]
+	canonicalBytes := []byte(name)
+	for i, ch := range canonicalBytes {
 		switch {
 		case ch >= '0' && ch <= '9':
 		case ch >= 'a' && ch <= 'z':
+		case ch >= 'A' && ch <= 'Z':
+			canonicalBytes[i] = ch + ('a' - 'A')
 		case ch == '-' || ch == '_':
-			if i == 0 || i == len(canonical)-1 {
+			if i == 0 || i == len(canonicalBytes)-1 {
 				return "", errors.New(
 					"Handshake TLD cannot start or end with '-' or '_'",
 				)
@@ -131,6 +132,14 @@ func CanonicalHandshakeTLD(name string) (string, error) {
 				i,
 			)
 		}
+	}
+	canonical := string(canonicalBytes)
+	switch canonical {
+	case "example", "invalid", "local", "localhost", "test":
+		return "", fmt.Errorf(
+			"Handshake TLD %q is consensus-blacklisted",
+			canonical,
+		)
 	}
 	return canonical, nil
 }

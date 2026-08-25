@@ -31,9 +31,9 @@ func TestCanonicalHandshakeTLD(t *testing.T) {
 		input string
 		want  string
 	}{
-		{input: "example", want: "example"},
-		{input: "EXAMPLE", want: "example"},
-		{input: "Example.", want: "example"},
+		{input: "example1", want: "example1"},
+		{input: "EXAMPLE1", want: "example1"},
+		{input: "Example1.", want: "example1"},
 		{input: "xn--bcher-kva", want: "xn--bcher-kva"},
 		{input: "under_score", want: "under_score"},
 		{input: "123", want: "123"},
@@ -68,6 +68,7 @@ func TestCanonicalHandshakeTLDRejectsInvalidNames(t *testing.T) {
 		"example_",
 		"ex ample",
 		"bücher",
+		"K",
 		strings.Repeat("a", 64),
 	}
 	for _, test := range tests {
@@ -77,14 +78,32 @@ func TestCanonicalHandshakeTLDRejectsInvalidNames(t *testing.T) {
 	}
 }
 
+func TestCanonicalHandshakeTLDRejectsConsensusBlacklist(t *testing.T) {
+	t.Parallel()
+
+	for _, name := range []string{
+		"example",
+		"EXAMPLE.",
+		"invalid",
+		"local",
+		"LOCAL.",
+		"localhost",
+		"test",
+	} {
+		if _, err := CanonicalHandshakeTLD(name); err == nil {
+			t.Errorf("CanonicalHandshakeTLD(%q) succeeded", name)
+		}
+	}
+}
+
 func TestHashHandshakeNameCanonicalizesPresentation(t *testing.T) {
 	t.Parallel()
 
-	lower, err := HashHandshakeName("example")
+	lower, err := HashHandshakeName("example1")
 	if err != nil {
 		t.Fatalf("hash lowercase name: %v", err)
 	}
-	upper, err := HashHandshakeName("EXAMPLE.")
+	upper, err := HashHandshakeName("EXAMPLE1.")
 	if err != nil {
 		t.Fatalf("hash presentation name: %v", err)
 	}
@@ -115,7 +134,7 @@ func TestBindingRoundTrip(t *testing.T) {
 	if got != binding {
 		t.Fatalf("round trip mismatch:\n got: %#v\nwant: %#v", got, binding)
 	}
-	if err := got.ValidateForName("EXAMPLE."); err != nil {
+	if err := got.ValidateForName("EXAMPLE1."); err != nil {
 		t.Fatalf("validate for name: %v", err)
 	}
 }
@@ -409,7 +428,7 @@ func testBinding(t testingTB) Binding {
 
 func testBindingForFuzz(t testingTB) Binding {
 	t.Helper()
-	nameHash, err := HashHandshakeName("example")
+	nameHash, err := HashHandshakeName("example1")
 	if err != nil {
 		t.Fatalf("hash test name: %v", err)
 	}

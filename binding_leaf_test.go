@@ -125,6 +125,26 @@ func TestBindingLeafValidation(t *testing.T) {
 			},
 		},
 		{
+			name: "null owner for active name",
+			mutate: func(leaf *BindingLeaf) {
+				leaf.OwnerTransactionID = Digest{}
+				leaf.OwnerOutputIndex = NullOwnerOutputIndex
+			},
+		},
+		{
+			name: "null owner with ordinary output index",
+			mutate: func(leaf *BindingLeaf) {
+				leaf.OwnerTransactionID = Digest{}
+				leaf.Expired = true
+			},
+		},
+		{
+			name: "reserved owner output index",
+			mutate: func(leaf *BindingLeaf) {
+				leaf.OwnerOutputIndex = NullOwnerOutputIndex
+			},
+		},
+		{
 			name: "resource hash",
 			mutate: func(leaf *BindingLeaf) {
 				leaf.ResourceHash = Digest{}
@@ -190,6 +210,27 @@ func TestBindingLeafAllowsAbsentLifecycleHeights(t *testing.T) {
 	leaf.RenewalHeight = 0
 	if err := leaf.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestBindingLeafAllowsExpiredNullOwner(t *testing.T) {
+	t.Parallel()
+
+	leaf := testBindingLeaf(t)
+	leaf.OwnerTransactionID = Digest{}
+	leaf.OwnerOutputIndex = NullOwnerOutputIndex
+	leaf.Registered = false
+	leaf.Expired = true
+	data, err := leaf.MarshalCBOR()
+	if err != nil {
+		t.Fatalf("MarshalCBOR: %v", err)
+	}
+	got, err := UnmarshalBindingLeaf(data)
+	if err != nil {
+		t.Fatalf("UnmarshalBindingLeaf: %v", err)
+	}
+	if got != leaf {
+		t.Fatalf("round trip mismatch:\n got: %#v\nwant: %#v", got, leaf)
 	}
 }
 
