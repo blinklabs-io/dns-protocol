@@ -20,6 +20,14 @@ Cardano stake pool operators:
 - field and size validation;
 - CDDL and cross-implementation golden vectors.
 
+The version 1 owner binding defines:
+
+- canonical Handshake TLD normalization, consensus validation, and name hashing;
+- the compact `CDNS1` Handshake TXT item;
+- Cardano network, policy, and controller credential binding;
+- generation nonces and strict capability-bit validation;
+- duplicate-binding and cross-name transplant rejection.
+
 The outer CIP-0137 KES/opcert envelope is the individual SPO vote. This package
 does not implement DMQ transport, KES authentication, quorum, or certificate
 aggregation.
@@ -30,6 +38,9 @@ aggregation.
 checkpoint.go              Go reference types and codec
 checkpoint_test.go         behavior and negative tests
 spec/v1/attestation.cddl   language-neutral CDDL
+binding.go                 CDNS1 binding and Handshake name canonicalization
+binding_test.go            binding behavior, negative tests, and fuzz coverage
+spec/v1/binding.cddl       language-neutral CDNS1 binding schema
 testdata/v1/               golden vector inputs and expected outputs
 ```
 
