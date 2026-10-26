@@ -314,6 +314,16 @@ func TestNameAuthorityHandshakeUnderscoreRules(t *testing.T) {
 	}
 }
 
+func TestNameAuthorityRejectsHandshakeBlacklist(t *testing.T) {
+	t.Parallel()
+
+	authority := testHandshakeTLDAuthority()
+	authority.CanonicalWireName = []byte{4, 't', 'e', 's', 't', 0}
+	if err := authority.Validate(); err == nil {
+		t.Fatal("accepted consensus-blacklisted Handshake TLD")
+	}
+}
+
 func TestCIP113RepresentationRoundTripAndDigest(t *testing.T) {
 	t.Parallel()
 	value := testCIP113Representation()

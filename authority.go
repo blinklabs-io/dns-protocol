@@ -764,6 +764,11 @@ func canonicalWireNameLabelCount(
 				return 0, errors.New("contains a non-LDH byte")
 			}
 		}
+		if handshakeTLD {
+			if _, err := CanonicalHandshakeTLD(string(label)); err != nil {
+				return 0, err
+			}
+		}
 		offset += length
 	}
 }
