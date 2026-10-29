@@ -443,12 +443,6 @@ func TestCIP113RepresentationValidation(t *testing.T) {
 					CardanoCredentialVerificationKey
 			},
 		},
-		{
-			"domain state validator hash",
-			func(v *CIP113Representation) {
-				v.DomainStateValidator.Hash = CardanoCredentialHash{}
-			},
-		},
 		{"empty asset", func(v *CIP113Representation) { v.AssetName = nil }},
 		{
 			"long asset",
@@ -561,15 +555,27 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 			},
 		},
 		{
-			"transfer logic",
+			"empty transfer logic",
 			func(v *CIP113RegistryNodeLogic) {
-				v.TransferLogic.Hash = CardanoCredentialHash{}
+				v.TransferLogic = CardanoCredential{
+					Kind:  CardanoCredentialVerificationKey,
+					Empty: true,
+				}
 			},
 		},
 		{
 			"third-party logic",
 			func(v *CIP113RegistryNodeLogic) {
 				v.ThirdPartyLogic.Kind = CardanoCredentialKind(0)
+			},
+		},
+		{
+			"empty third-party logic",
+			func(v *CIP113RegistryNodeLogic) {
+				v.ThirdPartyLogic = CardanoCredential{
+					Kind:  CardanoCredentialVerificationKey,
+					Empty: true,
+				}
 			},
 		},
 		{
@@ -609,7 +615,7 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 
 func TestCIP113RegistryNodeLogicAcceptsCredentialKinds(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
+	fields := []struct {
 		name             string
 		selectCredential func(*CIP113RegistryNodeLogic) *CardanoCredential
 	}{
@@ -626,27 +632,35 @@ func TestCIP113RegistryNodeLogicAcceptsCredentialKinds(t *testing.T) {
 			return &v.UnfrackingLogic
 		}},
 	}
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			value := testCIP113RegistryNodeLogic()
-			credential := test.selectCredential(&value)
-			credential.Kind = CardanoCredentialVerificationKey
-			credential.Hash = credentialHashSequence(0xb0)
-			credential.Empty = false
-			encoded, err := value.MarshalCBOR()
-			if err != nil {
-				t.Fatalf("marshal registry node logic: %v", err)
-			}
-			decoded, err := UnmarshalCIP113RegistryNodeLogic(encoded)
-			if err != nil {
-				t.Fatalf("unmarshal registry node logic: %v", err)
-			}
-			if decoded != value {
-				t.Fatalf("round trip mismatch: %#v", decoded)
-			}
-		})
+	for _, field := range fields {
+		field := field
+		for _, kind := range []struct {
+			name  string
+			value CardanoCredentialKind
+		}{
+			{"verification-key", CardanoCredentialVerificationKey},
+			{"script", CardanoCredentialScript},
+		} {
+			kind := kind
+			t.Run(field.name+"/"+kind.name, func(t *testing.T) {
+				t.Parallel()
+				value := testCIP113RegistryNodeLogic()
+				*field.selectCredential(&value) = CardanoCredential{
+					Kind: kind.value,
+				}
+				encoded, err := value.MarshalCBOR()
+				if err != nil {
+					t.Fatalf("marshal registry node logic: %v", err)
+				}
+				decoded, err := UnmarshalCIP113RegistryNodeLogic(encoded)
+				if err != nil {
+					t.Fatalf("unmarshal registry node logic: %v", err)
+				}
+				if decoded != value {
+					t.Fatalf("round trip mismatch: %#v", decoded)
+				}
+			})
+		}
 	}
 }
 

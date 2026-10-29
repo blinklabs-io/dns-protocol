@@ -862,9 +862,6 @@ func (c CardanoCredential) validate(name string, allowEmpty bool) error {
 		}
 		return nil
 	}
-	if isZero(c.Hash[:]) {
-		return fmt.Errorf("%s hash must not be zero", name)
-	}
 	return nil
 }
 
