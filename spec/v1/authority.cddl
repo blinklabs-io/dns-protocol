@@ -52,10 +52,10 @@ cip113-representation = [
 cip113-registry-node-logic = [
   version: 1,
   token-policy-id: policy-id,       ; RegistryNode key
-  minting-logic: script-credential,
-  transfer-logic: script-credential,
-  third-party-logic: script-credential,
-  unfracking-logic: script-credential,
+  minting-logic: registry-logic-credential,
+  transfer-logic: registry-logic-credential,
+  third-party-logic: registry-logic-credential,
+  unfracking-logic: (registry-logic-credential / empty-key-credential),
   global-state-policy-id: policy-id
 ]
 
@@ -68,6 +68,14 @@ asset-name = bstr .size (1..32)
 script-credential = [
   credential-kind: 2,
   credential-hash: bstr .size 28
+]
+registry-logic-credential = [
+  credential-kind: 1..2,
+  credential-hash: bstr .size 28
+]
+empty-key-credential = [
+  credential-kind: 1,
+  credential-hash: bstr .size 0
 ]
 
 ; Identities are:

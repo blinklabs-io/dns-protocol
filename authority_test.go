@@ -516,7 +516,10 @@ func TestCIP113RegistryNodeLogicRoundTripAndDigest(t *testing.T) {
 		t.Fatalf("digest registry node logic: %v", err)
 	}
 	changed := value
-	changed.UnfrackingLogic.Hash[0]++
+	changed.UnfrackingLogic = CardanoCredential{
+		Kind: CardanoCredentialScript,
+		Hash: credentialHashSequence(0x80),
+	}
 	changedDigest, err := changed.Digest()
 	if err != nil {
 		t.Fatalf("digest changed registry node logic: %v", err)
@@ -545,7 +548,16 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 		{
 			"minting logic",
 			func(v *CIP113RegistryNodeLogic) {
-				v.MintingLogic.Kind = CardanoCredentialVerificationKey
+				v.MintingLogic.Kind = CardanoCredentialKind(3)
+			},
+		},
+		{
+			"empty minting logic",
+			func(v *CIP113RegistryNodeLogic) {
+				v.MintingLogic = CardanoCredential{
+					Kind:  CardanoCredentialVerificationKey,
+					Empty: true,
+				}
 			},
 		},
 		{
@@ -557,14 +569,22 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 		{
 			"third-party logic",
 			func(v *CIP113RegistryNodeLogic) {
-				v.ThirdPartyLogic.Kind =
-					CardanoCredentialVerificationKey
+				v.ThirdPartyLogic.Kind = CardanoCredentialKind(0)
 			},
 		},
 		{
 			"unfracking logic",
 			func(v *CIP113RegistryNodeLogic) {
-				v.UnfrackingLogic.Hash = CardanoCredentialHash{}
+				v.UnfrackingLogic = CardanoCredential{
+					Kind:  CardanoCredentialScript,
+					Empty: true,
+				}
+			},
+		},
+		{
+			"empty unfracking logic with hash",
+			func(v *CIP113RegistryNodeLogic) {
+				v.UnfrackingLogic.Hash = credentialHashSequence(0x80)
 			},
 		},
 		{
@@ -584,6 +604,74 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 				t.Fatal("expected validation error")
 			}
 		})
+	}
+}
+
+func TestCIP113RegistryNodeLogicAcceptsCredentialKinds(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name             string
+		selectCredential func(*CIP113RegistryNodeLogic) *CardanoCredential
+	}{
+		{"minting", func(v *CIP113RegistryNodeLogic) *CardanoCredential {
+			return &v.MintingLogic
+		}},
+		{"transfer", func(v *CIP113RegistryNodeLogic) *CardanoCredential {
+			return &v.TransferLogic
+		}},
+		{"third-party", func(v *CIP113RegistryNodeLogic) *CardanoCredential {
+			return &v.ThirdPartyLogic
+		}},
+		{"unfracking", func(v *CIP113RegistryNodeLogic) *CardanoCredential {
+			return &v.UnfrackingLogic
+		}},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			value := testCIP113RegistryNodeLogic()
+			credential := test.selectCredential(&value)
+			credential.Kind = CardanoCredentialVerificationKey
+			credential.Hash = credentialHashSequence(0xb0)
+			credential.Empty = false
+			encoded, err := value.MarshalCBOR()
+			if err != nil {
+				t.Fatalf("marshal registry node logic: %v", err)
+			}
+			decoded, err := UnmarshalCIP113RegistryNodeLogic(encoded)
+			if err != nil {
+				t.Fatalf("unmarshal registry node logic: %v", err)
+			}
+			if decoded != value {
+				t.Fatalf("round trip mismatch: %#v", decoded)
+			}
+		})
+	}
+}
+
+func TestCIP113RegistryNodeLogicEmptyUnfrackingCredential(t *testing.T) {
+	t.Parallel()
+	value := testCIP113RegistryNodeLogic()
+	wire := value.wire()
+	wire.UnfrackingLogic = cardanoCredentialWire{
+		Kind: uint64(CardanoCredentialVerificationKey),
+		Hash: []byte{},
+	}
+	encoded, err := encMode.Marshal(wire)
+	if err != nil {
+		t.Fatalf("encode registry node logic: %v", err)
+	}
+	decoded, err := UnmarshalCIP113RegistryNodeLogic(encoded)
+	if err != nil {
+		t.Fatalf("unmarshal registry node logic: %v", err)
+	}
+	reencoded, err := decoded.MarshalCBOR()
+	if err != nil {
+		t.Fatalf("marshal registry node logic: %v", err)
+	}
+	if !bytes.Equal(encoded, reencoded) {
+		t.Fatalf("empty credential changed on round trip: %x", reencoded)
 	}
 }
 
@@ -926,7 +1014,7 @@ func testCIP113RegistryNodeLogic() CIP113RegistryNodeLogic {
 		Version:       CIP113RegistryNodeLogicVersionV1,
 		TokenPolicyID: policyIDSequence(0x50),
 		MintingLogic: CardanoCredential{
-			Kind: CardanoCredentialScript,
+			Kind: CardanoCredentialVerificationKey,
 			Hash: credentialHashSequence(0x30),
 		},
 		TransferLogic: CardanoCredential{
@@ -934,12 +1022,12 @@ func testCIP113RegistryNodeLogic() CIP113RegistryNodeLogic {
 			Hash: credentialHashSequence(0x50),
 		},
 		ThirdPartyLogic: CardanoCredential{
-			Kind: CardanoCredentialScript,
+			Kind: CardanoCredentialVerificationKey,
 			Hash: credentialHashSequence(0x70),
 		},
 		UnfrackingLogic: CardanoCredential{
-			Kind: CardanoCredentialScript,
-			Hash: credentialHashSequence(0x80),
+			Kind:  CardanoCredentialVerificationKey,
+			Empty: true,
 		},
 		GlobalStatePolicyID: policyIDSequence(0x60),
 	}

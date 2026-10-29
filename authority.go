@@ -125,6 +125,9 @@ const (
 type CardanoCredential struct {
 	Kind CardanoCredentialKind
 	Hash CardanoCredentialHash
+	// Empty encodes the empty verification-key credential used to forbid
+	// unfracking by default. It is invalid for every other credential.
+	Empty bool
 }
 
 type nameAuthorityWire struct {
@@ -442,16 +445,20 @@ func (n CIP113RegistryNodeLogic) Validate() error {
 		return errors.New("registry node token policy ID must not be zero")
 	}
 	credentials := []struct {
-		name  string
-		value CardanoCredential
+		name       string
+		value      CardanoCredential
+		allowEmpty bool
 	}{
-		{"registry node minting logic", n.MintingLogic},
-		{"registry node transfer logic", n.TransferLogic},
-		{"registry node third-party logic", n.ThirdPartyLogic},
-		{"registry node unfracking logic", n.UnfrackingLogic},
+		{"registry node minting logic", n.MintingLogic, false},
+		{"registry node transfer logic", n.TransferLogic, false},
+		{"registry node third-party logic", n.ThirdPartyLogic, false},
+		{"registry node unfracking logic", n.UnfrackingLogic, true},
 	}
 	for _, credential := range credentials {
-		if err := credential.value.validateScript(credential.name); err != nil {
+		if err := credential.value.validate(
+			credential.name,
+			credential.allowEmpty,
+		); err != nil {
 			return err
 		}
 	}
@@ -606,6 +613,7 @@ func cip113RepresentationFromWire(
 	domainStateValidator, err := cardanoCredentialFromWire(
 		"domain state validator",
 		w.DomainStateValidator,
+		false,
 	)
 	if err != nil {
 		return CIP113Representation{}, err
@@ -674,6 +682,7 @@ func cip113RegistryNodeLogicFromWire(
 	minting, err := cardanoCredentialFromWire(
 		"registry node minting logic",
 		w.MintingLogic,
+		false,
 	)
 	if err != nil {
 		return CIP113RegistryNodeLogic{}, err
@@ -681,6 +690,7 @@ func cip113RegistryNodeLogicFromWire(
 	transfer, err := cardanoCredentialFromWire(
 		"registry node transfer logic",
 		w.TransferLogic,
+		false,
 	)
 	if err != nil {
 		return CIP113RegistryNodeLogic{}, err
@@ -688,6 +698,7 @@ func cip113RegistryNodeLogicFromWire(
 	thirdParty, err := cardanoCredentialFromWire(
 		"registry node third-party logic",
 		w.ThirdPartyLogic,
+		false,
 	)
 	if err != nil {
 		return CIP113RegistryNodeLogic{}, err
@@ -695,6 +706,7 @@ func cip113RegistryNodeLogicFromWire(
 	unfracking, err := cardanoCredentialFromWire(
 		"registry node unfracking logic",
 		w.UnfrackingLogic,
+		true,
 	)
 	if err != nil {
 		return CIP113RegistryNodeLogic{}, err
@@ -830,6 +842,26 @@ func (c CardanoCredential) validateScript(name string) error {
 	if c.Kind != CardanoCredentialScript {
 		return fmt.Errorf("%s must be a script credential", name)
 	}
+	return c.validate(name, false)
+}
+
+func (c CardanoCredential) validate(name string, allowEmpty bool) error {
+	if c.Kind != CardanoCredentialVerificationKey &&
+		c.Kind != CardanoCredentialScript {
+		return fmt.Errorf("%s has unsupported credential kind %d", name, c.Kind)
+	}
+	if c.Empty {
+		if !allowEmpty || c.Kind != CardanoCredentialVerificationKey {
+			return fmt.Errorf(
+				"%s may only be an empty verification-key credential",
+				name,
+			)
+		}
+		if !isZero(c.Hash[:]) {
+			return fmt.Errorf("%s empty credential has a hash", name)
+		}
+		return nil
+	}
 	if isZero(c.Hash[:]) {
 		return fmt.Errorf("%s hash must not be zero", name)
 	}
@@ -837,25 +869,34 @@ func (c CardanoCredential) validateScript(name string) error {
 }
 
 func (c CardanoCredential) wire() cardanoCredentialWire {
+	hash := clone(c.Hash[:])
+	if c.Empty {
+		hash = []byte{}
+	}
 	return cardanoCredentialWire{
 		Kind: uint64(c.Kind),
-		Hash: clone(c.Hash[:]),
+		Hash: hash,
 	}
 }
 
 func cardanoCredentialFromWire(
 	name string,
 	w cardanoCredentialWire,
+	allowEmpty bool,
 ) (CardanoCredential, error) {
-	hash, err := credentialHash(name+" hash", w.Hash)
-	if err != nil {
-		return CardanoCredential{}, err
-	}
 	credential := CardanoCredential{
 		Kind: CardanoCredentialKind(w.Kind),
-		Hash: hash,
 	}
-	if err := credential.validateScript(name); err != nil {
+	if len(w.Hash) == 0 {
+		credential.Empty = true
+	} else {
+		hash, err := credentialHash(name+" hash", w.Hash)
+		if err != nil {
+			return CardanoCredential{}, err
+		}
+		credential.Hash = hash
+	}
+	if err := credential.validate(name, allowEmpty); err != nil {
 		return CardanoCredential{}, err
 	}
 	return credential, nil
