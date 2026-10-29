@@ -55,6 +55,7 @@ cip113-registry-node-logic = [
   minting-logic: script-credential,
   transfer-logic: script-credential,
   third-party-logic: script-credential,
+  unfracking-logic: script-credential,
   global-state-policy-id: policy-id
 ]
 

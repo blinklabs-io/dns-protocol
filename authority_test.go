@@ -515,6 +515,15 @@ func TestCIP113RegistryNodeLogicRoundTripAndDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("digest registry node logic: %v", err)
 	}
+	changed := value
+	changed.UnfrackingLogic.Hash[0]++
+	changedDigest, err := changed.Digest()
+	if err != nil {
+		t.Fatalf("digest changed registry node logic: %v", err)
+	}
+	if changedDigest == digest {
+		t.Fatal("unfracking logic did not change registry node logic digest")
+	}
 	fixture := loadAuthorityFixture(t)
 	assertHex(t, "registry node logic CBOR", encoded, fixture.RegistryNodeLogic.ExpectedCBOR)
 	assertHex(t, "registry node logic digest", digest[:], fixture.RegistryNodeLogic.ExpectedDigest)
@@ -550,6 +559,12 @@ func TestCIP113RegistryNodeLogicValidation(t *testing.T) {
 			func(v *CIP113RegistryNodeLogic) {
 				v.ThirdPartyLogic.Kind =
 					CardanoCredentialVerificationKey
+			},
+		},
+		{
+			"unfracking logic",
+			func(v *CIP113RegistryNodeLogic) {
+				v.UnfrackingLogic.Hash = CardanoCredentialHash{}
 			},
 		},
 		{
@@ -921,6 +936,10 @@ func testCIP113RegistryNodeLogic() CIP113RegistryNodeLogic {
 		ThirdPartyLogic: CardanoCredential{
 			Kind: CardanoCredentialScript,
 			Hash: credentialHashSequence(0x70),
+		},
+		UnfrackingLogic: CardanoCredential{
+			Kind: CardanoCredentialScript,
+			Hash: credentialHashSequence(0x80),
 		},
 		GlobalStatePolicyID: policyIDSequence(0x60),
 	}

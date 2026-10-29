@@ -108,6 +108,7 @@ type CIP113RegistryNodeLogic struct {
 	MintingLogic        CardanoCredential
 	TransferLogic       CardanoCredential
 	ThirdPartyLogic     CardanoCredential
+	UnfrackingLogic     CardanoCredential
 	GlobalStatePolicyID CardanoPolicyID
 }
 
@@ -163,6 +164,7 @@ type cip113RegistryNodeLogicWire struct {
 	MintingLogic        cardanoCredentialWire
 	TransferLogic       cardanoCredentialWire
 	ThirdPartyLogic     cardanoCredentialWire
+	UnfrackingLogic     cardanoCredentialWire
 	GlobalStatePolicyID []byte
 }
 
@@ -446,6 +448,7 @@ func (n CIP113RegistryNodeLogic) Validate() error {
 		{"registry node minting logic", n.MintingLogic},
 		{"registry node transfer logic", n.TransferLogic},
 		{"registry node third-party logic", n.ThirdPartyLogic},
+		{"registry node unfracking logic", n.UnfrackingLogic},
 	}
 	for _, credential := range credentials {
 		if err := credential.value.validateScript(credential.name); err != nil {
@@ -653,6 +656,7 @@ func (n CIP113RegistryNodeLogic) wire() cip113RegistryNodeLogicWire {
 		MintingLogic:        n.MintingLogic.wire(),
 		TransferLogic:       n.TransferLogic.wire(),
 		ThirdPartyLogic:     n.ThirdPartyLogic.wire(),
+		UnfrackingLogic:     n.UnfrackingLogic.wire(),
 		GlobalStatePolicyID: clone(n.GlobalStatePolicyID[:]),
 	}
 }
@@ -688,6 +692,13 @@ func cip113RegistryNodeLogicFromWire(
 	if err != nil {
 		return CIP113RegistryNodeLogic{}, err
 	}
+	unfracking, err := cardanoCredentialFromWire(
+		"registry node unfracking logic",
+		w.UnfrackingLogic,
+	)
+	if err != nil {
+		return CIP113RegistryNodeLogic{}, err
+	}
 	globalState, err := policyID(
 		"registry node global state policy ID",
 		w.GlobalStatePolicyID,
@@ -701,6 +712,7 @@ func cip113RegistryNodeLogicFromWire(
 		MintingLogic:        minting,
 		TransferLogic:       transfer,
 		ThirdPartyLogic:     thirdParty,
+		UnfrackingLogic:     unfracking,
 		GlobalStatePolicyID: globalState,
 	}
 	if err := node.Validate(); err != nil {
