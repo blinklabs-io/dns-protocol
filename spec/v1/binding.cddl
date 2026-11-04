@@ -9,6 +9,10 @@
 ; It may contain letters, digits, hyphens, and underscores; hyphens and
 ; underscores cannot be the first or last byte. The Handshake consensus
 ; blacklist rejects "example", "invalid", "local", "localhost", and "test".
+;
+; The name-hash, protocol-policy-id, controller-credential, and
+; generation-nonce fields must not be all zero bytes. Decoders reject
+; all-zero values for these fields.
 
 dns-binding-v1 = [
   version: 1,

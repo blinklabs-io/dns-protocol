@@ -452,3 +452,46 @@ func filledCredential(value byte) CardanoCredentialHash {
 	}
 	return credential
 }
+
+func TestFindBindingTXTDuplicateWithMalformedFirst(t *testing.T) {
+	t.Parallel()
+
+	item, err := testBinding(t).MarshalTXTItem()
+	if err != nil {
+		t.Fatalf("marshal TXT item: %v", err)
+	}
+	malformed := []byte(bindingTXTMagicV1 + "\xff")
+	if _, err := FindBindingTXT([][]byte{malformed, item}); !errors.Is(
+		err,
+		ErrMultipleBindings,
+	) {
+		t.Fatalf("duplicate with malformed first item error = %v", err)
+	}
+}
+
+func TestBindingRoundTripKeyControllerRegtest(t *testing.T) {
+	t.Parallel()
+
+	binding := testBinding(t)
+	binding.HandshakeNetwork = HandshakeNetworkRegtest
+	binding.ControllerKind = ControllerKindKey
+	item, err := binding.MarshalTXTItem()
+	if err != nil {
+		t.Fatalf("marshal TXT item: %v", err)
+	}
+	got, err := UnmarshalBindingTXTItem(item)
+	if err != nil {
+		t.Fatalf("unmarshal TXT item: %v", err)
+	}
+	if got != binding {
+		t.Fatalf("round trip mismatch:\n got: %#v\nwant: %#v", got, binding)
+	}
+}
+
+func TestHandshakeNetworkRegtestWireValue(t *testing.T) {
+	t.Parallel()
+
+	if got := uint64(HandshakeNetworkRegtest); got != 1 {
+		t.Fatalf("HandshakeNetworkRegtest encodes as %d, want 1", got)
+	}
+}

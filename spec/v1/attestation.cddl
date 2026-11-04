@@ -12,7 +12,7 @@ checkpoint-vote = [
   handshake-network: 0..3,          ; mainnet, regtest, testnet, simnet
   round: uint,
   state-through-height: uint,
-  root-commit-height: uint,
+  root-commit-height: uint,         ; MUST be greater than state-through-height
   root-commit-block-hash: digest32,
   root-commit-chainwork: digest32,   ; unsigned, big-endian
   handshake-name-root: digest32,
@@ -47,7 +47,7 @@ checkpoint-agreement = [
   handshake-network: 0..3,
   round: uint,
   state-through-height: uint,
-  root-commit-height: uint,
+  root-commit-height: uint,         ; MUST be greater than state-through-height
   root-commit-block-hash: digest32,
   root-commit-chainwork: digest32,
   handshake-name-root: digest32,

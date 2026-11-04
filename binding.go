@@ -285,29 +285,25 @@ func UnmarshalBindingTXTItem(item []byte) (Binding, error) {
 }
 
 // FindBindingTXT decodes the sole CDNS1 item in a Handshake TXT record.
+// Duplicates are reported before any item is decoded, so a malformed item
+// cannot mask ErrMultipleBindings.
 func FindBindingTXT(items [][]byte) (Binding, error) {
-	var (
-		found   Binding
-		matched bool
-	)
+	var found []byte
+	count := 0
 	for _, item := range items {
-		if !bytes.HasPrefix(item, []byte(bindingTXTMagicV1)) {
-			continue
+		if bytes.HasPrefix(item, []byte(bindingTXTMagicV1)) {
+			found = item
+			count++
 		}
-		if matched {
-			return Binding{}, ErrMultipleBindings
-		}
-		binding, err := UnmarshalBindingTXTItem(item)
-		if err != nil {
-			return Binding{}, err
-		}
-		found = binding
-		matched = true
 	}
-	if !matched {
+	switch count {
+	case 0:
 		return Binding{}, ErrBindingNotFound
+	case 1:
+		return UnmarshalBindingTXTItem(found)
+	default:
+		return Binding{}, ErrMultipleBindings
 	}
-	return found, nil
 }
 
 func (b Binding) wire() bindingWire {
